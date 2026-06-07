@@ -3,9 +3,9 @@
 
 int main()
 {
-    printf("===== 2D GRAPHICS EDITOR =====\n\n");
-
     clearCanvas();
+
+    drawRectangle(2, 5, 15, 6);
 
     displayCanvas();
 

@@ -8,5 +8,6 @@ extern char canvas[ROWS][COLS];
 
 void clearCanvas();
 void displayCanvas();
+void drawRectangle(int row, int col, int width, int height);
 
 #endif
