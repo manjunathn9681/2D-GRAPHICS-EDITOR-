@@ -1,7 +1,7 @@
 CC = gcc
 
 all:
-	gcc main.c graphics.c -o editor
+	$(CC) graphics.c -o editor
 
 run:
 	./editor
