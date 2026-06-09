@@ -1225,6 +1225,7 @@ int main(void) {
     /* ---- Clear ---- */
     case 8:
       objectCount = 0;
+      nextId = 1;
       clearCanvas();
       printf("  Canvas cleared.\n");
       printf("  Press Enter to continue...\n");
