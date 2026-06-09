@@ -375,6 +375,72 @@ static void drawCircleCPBuf(char buf[ROWS][COLS], Point centre, int radius) {
     }
 }
 
+static void setPixelBufChar(char buf[ROWS][COLS], int r, int c, char ch) {
+  if (inBounds(r, c))
+    buf[r][c] = ch;
+}
+
+static void drawSegmentBufChar(char buf[ROWS][COLS], int r1, int c1, int r2,
+                               int c2, char ch) {
+  int dr = abs(r2 - r1), dc = abs(c2 - c1);
+  int sr = r1 < r2 ? 1 : -1, sc = c1 < c2 ? 1 : -1;
+  int err = (dr > dc ? dr : -dc) / 2, e2;
+  for (;;) {
+    setPixelBufChar(buf, r1, c1, ch);
+    if (r1 == r2 && c1 == c2)
+      break;
+    e2 = err;
+    if (e2 > -dr) {
+      err -= dc;
+      r1 += sr;
+    }
+    if (e2 < dc) {
+      err += dr;
+      c1 += sc;
+    }
+  }
+}
+
+static void drawCircleCPBufChar(char buf[ROWS][COLS], Point centre, int radius,
+                                char ch) {
+  if (radius < 1)
+    return;
+  for (int dr = -radius; dr <= radius; dr++)
+    for (int dc = -radius; dc <= radius; dc++) {
+      double d = sqrt((double)dr * dr + (double)dc * dc);
+      if (fabs(d - radius) <= 0.55)
+        setPixelBufChar(buf, centre.row + dr, centre.col + dc, ch);
+    }
+}
+
+static void drawObjectBuf(char buf[ROWS][COLS], const GraphicObject *o, char ch) {
+  switch (o->type) {
+  case SHAPE_RECTANGLE:
+    drawSegmentBufChar(buf, o->p[0].row, o->p[0].col, o->p[1].row, o->p[1].col, ch);
+    drawSegmentBufChar(buf, o->p[1].row, o->p[1].col, o->p[2].row, o->p[2].col, ch);
+    drawSegmentBufChar(buf, o->p[2].row, o->p[2].col, o->p[3].row, o->p[3].col, ch);
+    drawSegmentBufChar(buf, o->p[3].row, o->p[3].col, o->p[0].row, o->p[0].col, ch);
+    break;
+  case SHAPE_CIRCLE:
+    drawCircleCPBufChar(buf, o->p[0], o->p[1].row, ch);
+    break;
+  case SHAPE_LINE:
+    drawSegmentBufChar(buf, o->p[0].row, o->p[0].col, o->p[1].row, o->p[1].col, ch);
+    break;
+  case SHAPE_TRIANGLE:
+    drawSegmentBufChar(buf, o->p[0].row, o->p[0].col, o->p[1].row, o->p[1].col, ch);
+    drawSegmentBufChar(buf, o->p[1].row, o->p[1].col, o->p[2].row, o->p[2].col, ch);
+    drawSegmentBufChar(buf, o->p[2].row, o->p[2].col, o->p[0].row, o->p[0].col, ch);
+    break;
+  }
+}
+
+static void prepareModifyDisplayBuffer(char buf[ROWS][COLS], const GraphicObject *obj) {
+  memcpy(buf, canvas, sizeof(char[ROWS][COLS]));
+  if (obj != NULL)
+    drawObjectBuf(buf, obj, 'O');
+}
+
 void redrawCanvas(void) {
   clearCanvas();
   for (int i = 0; i < objectCount; i++) {
@@ -1121,7 +1187,7 @@ static int modifyRectangleObject(GraphicObject *obj) {
   Point P1 = obj->p[0];
   for (;;) {
     char buf[ROWS][COLS];
-    memcpy(buf, canvas, sizeof(buf));
+    prepareModifyDisplayBuffer(buf, obj);
     Point conf[1];
     renderWithBuf(buf, conf, 0, curRow, curCol,
                   "[Rect P1/3] Pick first corner  SPACE=confirm  ESC=cancel");
@@ -1147,7 +1213,7 @@ static int modifyRectangleObject(GraphicObject *obj) {
   curRow = P1.row;
   for (;;) {
     char buf[ROWS][COLS];
-    memcpy(buf, canvas, sizeof(buf));
+    prepareModifyDisplayBuffer(buf, obj);
     int c1 = P1.col, c2 = curCol;
     if (c1 > c2) {
       int t = c1;
@@ -1181,7 +1247,7 @@ static int modifyRectangleObject(GraphicObject *obj) {
   curRow = P2.row;
   for (;;) {
     char buf[ROWS][COLS];
-    memcpy(buf, canvas, sizeof(buf));
+    prepareModifyDisplayBuffer(buf, obj);
     int r1 = P1.row, r2 = curRow;
     int ca = P1.col, cb = P2.col;
     if (ca > cb) {
@@ -1243,7 +1309,7 @@ static int modifyCircleObject(GraphicObject *obj) {
   Point centre = obj->p[0];
   for (;;) {
     char buf[ROWS][COLS];
-    memcpy(buf, canvas, sizeof(buf));
+    prepareModifyDisplayBuffer(buf, obj);
     Point conf[1];
     renderWithBuf(buf, conf, 0, curRow, curCol,
                   "[Circle] Pick CENTRE  SPACE=confirm  ESC=cancel");
@@ -1267,7 +1333,7 @@ static int modifyCircleObject(GraphicObject *obj) {
 
   for (;;) {
     char buf[ROWS][COLS];
-    memcpy(buf, canvas, sizeof(buf));
+    prepareModifyDisplayBuffer(buf, obj);
     int radius = (int)lrint(hypot((double)(curRow - centre.row), (double)(curCol - centre.col)));
     drawCircleCPBuf(buf, centre, radius);
     Point conf[1];
@@ -1302,7 +1368,7 @@ static int modifyLineObject(GraphicObject *obj) {
   Point P1 = obj->p[0];
   for (;;) {
     char buf[ROWS][COLS];
-    memcpy(buf, canvas, sizeof(buf));
+    prepareModifyDisplayBuffer(buf, obj);
     Point conf[1];
     renderWithBuf(buf, conf, 0, curRow, curCol,
                   "[Line P1/2] Pick START  SPACE=confirm  ESC=cancel");
@@ -1329,7 +1395,7 @@ static int modifyLineObject(GraphicObject *obj) {
   conf1[0] = P1;
   for (;;) {
     char buf[ROWS][COLS];
-    memcpy(buf, canvas, sizeof(buf));
+    prepareModifyDisplayBuffer(buf, obj);
     drawSegmentBuf(buf, P1.row, P1.col, curRow, curCol);
     renderWithBuf(buf, conf1, 1, curRow, curCol,
                   "[Line P2/2] Pick END  SPACE=confirm  ESC=cancel");
@@ -1364,7 +1430,7 @@ static int modifyTriangleObject(GraphicObject *obj) {
   Point P1 = obj->p[0];
   for (;;) {
     char buf[ROWS][COLS];
-    memcpy(buf, canvas, sizeof(buf));
+    prepareModifyDisplayBuffer(buf, obj);
     Point conf[1];
     renderWithBuf(buf, conf, 0, curRow, curCol,
                   "[Tri P1/3] Pick POINT 1  SPACE=confirm  ESC=cancel");
@@ -1391,7 +1457,7 @@ static int modifyTriangleObject(GraphicObject *obj) {
   conf1[0] = P1;
   for (;;) {
     char buf[ROWS][COLS];
-    memcpy(buf, canvas, sizeof(buf));
+    prepareModifyDisplayBuffer(buf, obj);
     drawSegmentBuf(buf, P1.row, P1.col, curRow, curCol);
     renderWithBuf(buf, conf1, 1, curRow, curCol,
                   "[Tri P2/3] Pick POINT 2  SPACE=confirm  ESC=cancel");
@@ -1424,7 +1490,7 @@ static int modifyTriangleObject(GraphicObject *obj) {
   conf2[1] = P2;
   for (;;) {
     char buf[ROWS][COLS];
-    memcpy(buf, canvas, sizeof(buf));
+    prepareModifyDisplayBuffer(buf, obj);
     drawSegmentBuf(buf, P1.row, P1.col, P2.row, P2.col);
     drawSegmentBuf(buf, P2.row, P2.col, curRow, curCol);
     drawSegmentBuf(buf, curRow, curCol, P1.row, P1.col);
@@ -1477,8 +1543,8 @@ int modifyObject(int id) {
     break;
   }
   disableRawMode();
+  redrawCanvas();
   if (ok) {
-    redrawCanvas();
     return 1;
   }
   return 0;
