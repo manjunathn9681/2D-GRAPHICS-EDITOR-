@@ -339,6 +339,42 @@ void drawObject(const GraphicObject *o) {
   }
 }
 
+static void setPixelBuf(char buf[ROWS][COLS], int r, int c) {
+  if (inBounds(r, c))
+    buf[r][c] = '*';
+}
+
+static void drawSegmentBuf(char buf[ROWS][COLS], int r1, int c1, int r2, int c2) {
+  int dr = abs(r2 - r1), dc = abs(c2 - c1);
+  int sr = r1 < r2 ? 1 : -1, sc = c1 < c2 ? 1 : -1;
+  int err = (dr > dc ? dr : -dc) / 2, e2;
+  for (;;) {
+    setPixelBuf(buf, r1, c1);
+    if (r1 == r2 && c1 == c2)
+      break;
+    e2 = err;
+    if (e2 > -dr) {
+      err -= dc;
+      r1 += sr;
+    }
+    if (e2 < dc) {
+      err += dr;
+      c1 += sc;
+    }
+  }
+}
+
+static void drawCircleCPBuf(char buf[ROWS][COLS], Point centre, int radius) {
+  if (radius < 1)
+    return;
+  for (int dr = -radius; dr <= radius; dr++)
+    for (int dc = -radius; dc <= radius; dc++) {
+      double d = sqrt((double)dr * dr + (double)dc * dc);
+      if (fabs(d - radius) <= 0.55)
+        setPixelBuf(buf, centre.row + dr, centre.col + dc);
+    }
+}
+
 void redrawCanvas(void) {
   clearCanvas();
   for (int i = 0; i < objectCount; i++) {
@@ -1067,6 +1103,388 @@ int interactiveTriangle(void) {
 }
 
 /* ================================================================== */
+/*  Modify object (cursor-based)                                      */
+/* ================================================================== */
+static int findObjectIndexById(int id) {
+  for (int i = 0; i < objectCount; i++) {
+    if (objects[i].id == id)
+      return i;
+  }
+  return -1;
+}
+
+static int modifyRectangleObject(GraphicObject *obj) {
+  int curRow = obj->p[0].row >= 0 && obj->p[0].row < ROWS ? obj->p[0].row : ROWS / 2;
+  int curCol = obj->p[0].col >= 0 && obj->p[0].col < COLS ? obj->p[0].col : COLS / 2;
+  clrscr();
+
+  Point P1 = obj->p[0];
+  for (;;) {
+    char buf[ROWS][COLS];
+    memcpy(buf, canvas, sizeof(buf));
+    Point conf[1];
+    renderWithBuf(buf, conf, 0, curRow, curCol,
+                  "[Rect P1/3] Pick first corner  SPACE=confirm  ESC=cancel");
+    int k = readKey();
+    if (k == KEY_ESC)
+      return 0;
+    if (k == KEY_UP && curRow > 0)
+      curRow--;
+    if (k == KEY_DOWN && curRow < ROWS - 1)
+      curRow++;
+    if (k == KEY_LEFT && curCol > 0)
+      curCol--;
+    if (k == KEY_RIGHT && curCol < COLS - 1)
+      curCol++;
+    if (k == KEY_SPACE || k == KEY_ENTER) {
+      P1.row = curRow;
+      P1.col = curCol;
+      break;
+    }
+  }
+
+  Point P2 = P1;
+  curRow = P1.row;
+  for (;;) {
+    char buf[ROWS][COLS];
+    memcpy(buf, canvas, sizeof(buf));
+    int c1 = P1.col, c2 = curCol;
+    if (c1 > c2) {
+      int t = c1;
+      c1 = c2;
+      c2 = t;
+    }
+    for (int j = c1; j <= c2; j++)
+      buf[P1.row][j] = '*';
+
+    Point conf[1];
+    conf[0] = P1;
+    renderWithBuf(buf, conf, 1, curRow, curCol,
+                  "[Rect P2/3] TOP EDGE: move LEFT/RIGHT  SPACE=confirm  ESC=cancel");
+    int k = readKey();
+    if (k == KEY_ESC)
+      return 0;
+    if (k == KEY_LEFT && curCol > 0)
+      curCol--;
+    if (k == KEY_RIGHT && curCol < COLS - 1)
+      curCol++;
+    curRow = P1.row;
+    if (k == KEY_SPACE || k == KEY_ENTER) {
+      P2.row = curRow;
+      P2.col = curCol;
+      break;
+    }
+  }
+
+  Point P3 = P2;
+  curCol = P2.col;
+  curRow = P2.row;
+  for (;;) {
+    char buf[ROWS][COLS];
+    memcpy(buf, canvas, sizeof(buf));
+    int r1 = P1.row, r2 = curRow;
+    int ca = P1.col, cb = P2.col;
+    if (ca > cb) {
+      int t = ca;
+      ca = cb;
+      cb = t;
+    }
+    for (int j = ca; j <= cb; j++)
+      buf[P1.row][j] = '*';
+    int ra = P1.row, rb = curRow;
+    if (ra > rb) {
+      int t = ra;
+      ra = rb;
+      rb = t;
+    }
+    for (int i = ra; i <= rb; i++)
+      buf[i][P2.col] = '*';
+    int bottomRow = curRow;
+    for (int j = ca; j <= cb; j++)
+      buf[bottomRow][j] = '*';
+    for (int i = ra; i <= rb; i++)
+      buf[i][P1.col] = '*';
+    (void)r1;
+    (void)r2;
+
+    Point conf[2];
+    conf[0] = P1;
+    conf[1] = P2;
+    renderWithBuf(buf, conf, 2, curRow, curCol,
+                  "[Rect P3/3] HEIGHT: move UP/DOWN  SPACE=confirm  ESC=cancel");
+    int k = readKey();
+    if (k == KEY_ESC)
+      return 0;
+    if (k == KEY_UP && curRow > 0)
+      curRow--;
+    if (k == KEY_DOWN && curRow < ROWS - 1)
+      curRow++;
+    curCol = P2.col;
+    if (k == KEY_SPACE || k == KEY_ENTER) {
+      P3.row = curRow;
+      P3.col = curCol;
+      break;
+    }
+  }
+
+  Point P4 = {P3.row, P1.col};
+  obj->p[0] = P1;
+  obj->p[1] = P2;
+  obj->p[2] = P3;
+  obj->p[3] = P4;
+  return 1;
+}
+
+static int modifyCircleObject(GraphicObject *obj) {
+  int curRow = obj->p[0].row >= 0 && obj->p[0].row < ROWS ? obj->p[0].row : ROWS / 2;
+  int curCol = obj->p[0].col >= 0 && obj->p[0].col < COLS ? obj->p[0].col : COLS / 2;
+  clrscr();
+
+  Point centre = obj->p[0];
+  for (;;) {
+    char buf[ROWS][COLS];
+    memcpy(buf, canvas, sizeof(buf));
+    Point conf[1];
+    renderWithBuf(buf, conf, 0, curRow, curCol,
+                  "[Circle] Pick CENTRE  SPACE=confirm  ESC=cancel");
+    int k = readKey();
+    if (k == KEY_ESC)
+      return 0;
+    if (k == KEY_UP && curRow > 0)
+      curRow--;
+    if (k == KEY_DOWN && curRow < ROWS - 1)
+      curRow++;
+    if (k == KEY_LEFT && curCol > 0)
+      curCol--;
+    if (k == KEY_RIGHT && curCol < COLS - 1)
+      curCol++;
+    if (k == KEY_SPACE || k == KEY_ENTER) {
+      centre.row = curRow;
+      centre.col = curCol;
+      break;
+    }
+  }
+
+  for (;;) {
+    char buf[ROWS][COLS];
+    memcpy(buf, canvas, sizeof(buf));
+    int radius = (int)lrint(hypot((double)(curRow - centre.row), (double)(curCol - centre.col)));
+    drawCircleCPBuf(buf, centre, radius);
+    Point conf[1];
+    conf[0] = centre;
+    renderWithBuf(buf, conf, 1, curRow, curCol,
+                  "[Circle] Pick EDGE  SPACE=confirm  ESC=cancel");
+    int k = readKey();
+    if (k == KEY_ESC)
+      return 0;
+    if (k == KEY_UP && curRow > 0)
+      curRow--;
+    if (k == KEY_DOWN && curRow < ROWS - 1)
+      curRow++;
+    if (k == KEY_LEFT && curCol > 0)
+      curCol--;
+    if (k == KEY_RIGHT && curCol < COLS - 1)
+      curCol++;
+    if (k == KEY_SPACE || k == KEY_ENTER) {
+      obj->p[0] = centre;
+      obj->p[1].row = (int)lrint(hypot((double)(curRow - centre.row), (double)(curCol - centre.col)));
+      obj->p[1].col = 0;
+      return 1;
+    }
+  }
+}
+
+static int modifyLineObject(GraphicObject *obj) {
+  int curRow = obj->p[0].row >= 0 && obj->p[0].row < ROWS ? obj->p[0].row : ROWS / 2;
+  int curCol = obj->p[0].col >= 0 && obj->p[0].col < COLS ? obj->p[0].col : COLS / 2;
+  clrscr();
+
+  Point P1 = obj->p[0];
+  for (;;) {
+    char buf[ROWS][COLS];
+    memcpy(buf, canvas, sizeof(buf));
+    Point conf[1];
+    renderWithBuf(buf, conf, 0, curRow, curCol,
+                  "[Line P1/2] Pick START  SPACE=confirm  ESC=cancel");
+    int k = readKey();
+    if (k == KEY_ESC)
+      return 0;
+    if (k == KEY_UP && curRow > 0)
+      curRow--;
+    if (k == KEY_DOWN && curRow < ROWS - 1)
+      curRow++;
+    if (k == KEY_LEFT && curCol > 0)
+      curCol--;
+    if (k == KEY_RIGHT && curCol < COLS - 1)
+      curCol++;
+    if (k == KEY_SPACE || k == KEY_ENTER) {
+      P1.row = curRow;
+      P1.col = curCol;
+      break;
+    }
+  }
+
+  Point P2 = obj->p[1];
+  Point conf1[1];
+  conf1[0] = P1;
+  for (;;) {
+    char buf[ROWS][COLS];
+    memcpy(buf, canvas, sizeof(buf));
+    drawSegmentBuf(buf, P1.row, P1.col, curRow, curCol);
+    renderWithBuf(buf, conf1, 1, curRow, curCol,
+                  "[Line P2/2] Pick END  SPACE=confirm  ESC=cancel");
+    int k = readKey();
+    if (k == KEY_ESC)
+      return 0;
+    if (k == KEY_UP && curRow > 0)
+      curRow--;
+    if (k == KEY_DOWN && curRow < ROWS - 1)
+      curRow++;
+    if (k == KEY_LEFT && curCol > 0)
+      curCol--;
+    if (k == KEY_RIGHT && curCol < COLS - 1)
+      curCol++;
+    if (k == KEY_SPACE || k == KEY_ENTER) {
+      P2.row = curRow;
+      P2.col = curCol;
+      break;
+    }
+  }
+
+  obj->p[0] = P1;
+  obj->p[1] = P2;
+  return 1;
+}
+
+static int modifyTriangleObject(GraphicObject *obj) {
+  int curRow = obj->p[0].row >= 0 && obj->p[0].row < ROWS ? obj->p[0].row : ROWS / 2;
+  int curCol = obj->p[0].col >= 0 && obj->p[0].col < COLS ? obj->p[0].col : COLS / 2;
+  clrscr();
+
+  Point P1 = obj->p[0];
+  for (;;) {
+    char buf[ROWS][COLS];
+    memcpy(buf, canvas, sizeof(buf));
+    Point conf[1];
+    renderWithBuf(buf, conf, 0, curRow, curCol,
+                  "[Tri P1/3] Pick POINT 1  SPACE=confirm  ESC=cancel");
+    int k = readKey();
+    if (k == KEY_ESC)
+      return 0;
+    if (k == KEY_UP && curRow > 0)
+      curRow--;
+    if (k == KEY_DOWN && curRow < ROWS - 1)
+      curRow++;
+    if (k == KEY_LEFT && curCol > 0)
+      curCol--;
+    if (k == KEY_RIGHT && curCol < COLS - 1)
+      curCol++;
+    if (k == KEY_SPACE || k == KEY_ENTER) {
+      P1.row = curRow;
+      P1.col = curCol;
+      break;
+    }
+  }
+
+  Point P2 = obj->p[1];
+  Point conf1[1];
+  conf1[0] = P1;
+  for (;;) {
+    char buf[ROWS][COLS];
+    memcpy(buf, canvas, sizeof(buf));
+    drawSegmentBuf(buf, P1.row, P1.col, curRow, curCol);
+    renderWithBuf(buf, conf1, 1, curRow, curCol,
+                  "[Tri P2/3] Pick POINT 2  SPACE=confirm  ESC=cancel");
+    int k = readKey();
+    if (k == KEY_ESC)
+      return 0;
+    if (k == KEY_UP && curRow > 0)
+      curRow--;
+    if (k == KEY_DOWN && curRow < ROWS - 1)
+      curRow++;
+    if (k == KEY_LEFT && curCol > 0)
+      curCol--;
+    if (k == KEY_RIGHT && curCol < COLS - 1)
+      curCol++;
+    if (k == KEY_SPACE || k == KEY_ENTER) {
+      P2.row = curRow;
+      P2.col = curCol;
+      break;
+    }
+  }
+
+  Point P3 = obj->p[2];
+  curRow = (P1.row + P2.row) / 2 + 4;
+  curCol = (P1.col + P2.col) / 2;
+  if (curRow >= ROWS)
+    curRow = ROWS - 1;
+
+  Point conf2[2];
+  conf2[0] = P1;
+  conf2[1] = P2;
+  for (;;) {
+    char buf[ROWS][COLS];
+    memcpy(buf, canvas, sizeof(buf));
+    drawSegmentBuf(buf, P1.row, P1.col, P2.row, P2.col);
+    drawSegmentBuf(buf, P2.row, P2.col, curRow, curCol);
+    drawSegmentBuf(buf, curRow, curCol, P1.row, P1.col);
+    renderWithBuf(buf, conf2, 2, curRow, curCol,
+                  "[Tri P3/3] Pick APEX  SPACE=confirm  ESC=cancel");
+    int k = readKey();
+    if (k == KEY_ESC)
+      return 0;
+    if (k == KEY_UP && curRow > 0)
+      curRow--;
+    if (k == KEY_DOWN && curRow < ROWS - 1)
+      curRow++;
+    if (k == KEY_LEFT && curCol > 0)
+      curCol--;
+    if (k == KEY_RIGHT && curCol < COLS - 1)
+      curCol++;
+    if (k == KEY_SPACE || k == KEY_ENTER) {
+      P3.row = curRow;
+      P3.col = curCol;
+      break;
+    }
+  }
+
+  obj->p[0] = P1;
+  obj->p[1] = P2;
+  obj->p[2] = P3;
+  return 1;
+}
+
+int modifyObject(int id) {
+  int index = findObjectIndexById(id);
+  if (index < 0)
+    return 0;
+
+  redrawCanvas();
+  enableRawMode();
+  int ok = 0;
+  switch (objects[index].type) {
+  case SHAPE_RECTANGLE:
+    ok = modifyRectangleObject(&objects[index]);
+    break;
+  case SHAPE_CIRCLE:
+    ok = modifyCircleObject(&objects[index]);
+    break;
+  case SHAPE_LINE:
+    ok = modifyLineObject(&objects[index]);
+    break;
+  case SHAPE_TRIANGLE:
+    ok = modifyTriangleObject(&objects[index]);
+    break;
+  }
+  disableRawMode();
+  if (ok) {
+    redrawCanvas();
+    return 1;
+  }
+  return 0;
+}
+
+/* ================================================================== */
 /*  Menu  (options only -- canvas shown AFTER pick during drawing)      */
 /* ================================================================== */
 static void printMenu(void) {
@@ -1086,8 +1504,9 @@ static void printMenu(void) {
   printf("  |   8.  Clear canvas               |\n");
   printf("  |   9.  Quit                       |\n");
   printf("  |  10.  Canvas Snapshot            |\n");
+  printf("  |  11.  Modify object              |\n");
   printf("  +==================================+\n");
-  printf("\n  Choose (1-10): ");
+  printf("\n  Choose (1-11): ");
   fflush(stdout);
 }
 
@@ -1244,6 +1663,38 @@ int main(void) {
       printf("\n  Press Enter to continue...\n");
       getchar();
       break;
+
+    /* ---- Modify ---- */
+    case 11: {
+      if (objectCount == 0) {
+        printf("  No objects available to modify.\n");
+      } else {
+        printf("  Existing object IDs:");
+        for (int i = 0; i < objectCount; i++)
+          printf(" %d", objects[i].id);
+        printf("\n");
+        printf("  Enter object ID to modify: ");
+        fflush(stdout);
+        int id = 0;
+        if (scanf("%d", &id) == 1) {
+          int c;
+          while ((c = getchar()) != '\n' && c != EOF) {
+          }
+          if (modifyObject(id))
+            printf("  Modified object ID %d.\n", id);
+          else
+            printf("  No object found with ID %d.\n", id);
+        } else {
+          int c;
+          while ((c = getchar()) != '\n' && c != EOF) {
+          }
+          printf("  Invalid input.\n");
+        }
+      }
+      printf("  Press Enter to continue...\n");
+      getchar();
+      break;
+    }
 
     default:
       printf("  Invalid choice (1-10).\n");
