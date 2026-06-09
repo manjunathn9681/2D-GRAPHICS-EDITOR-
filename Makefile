@@ -1,10 +1,18 @@
-CC = gcc
+CC     = clang
+CFLAGS = -Wall -Wextra -Wpedantic -Wshadow -Wformat=2 \
+         -Wcast-align -Wconversion -Wsign-conversion \
+         -Wnull-dereference -g3 -O0
+OUTDIR = ./build/Debug
+TARGET = $(OUTDIR)/outDebug
 
-all:
-	$(CC) graphics.c -o editor
+all: $(TARGET)
 
-run:
-	./editor
+$(TARGET): graphics.c graphics.h
+	@mkdir -p $(OUTDIR)
+	$(CC) $(CFLAGS) graphics.c -lm -o $(TARGET)
+
+run: all
+	$(TARGET)
 
 clean:
-	rm -f editor
+	rm -f $(TARGET)
