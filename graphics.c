@@ -243,6 +243,77 @@ void drawTrianglePts(Point p1, Point p2, Point p3) {
   drawSegment(p3.row, p3.col, p1.row, p1.col);
 }
 
+static int isObjectIdUsed(int id) {
+  for (int i = 0; i < objectCount; i++) {
+    if (objects[i].id == id)
+      return 1;
+  }
+  return 0;
+}
+
+static int generateObjectId(void) {
+  while (isObjectIdUsed(nextId))
+    nextId++;
+  int id = nextId++;
+  return id;
+}
+
+static int placeObjectLabel(int row, int col, const char *label) {
+  int offsets[8][2] = {{0, 1}, {1, 0}, {0, -1}, {-1, 0},
+                       {1, 1}, {-1, 1}, {1, -1}, {-1, -1}};
+
+  for (int i = 0; i < 8; i++) {
+    int r = row + offsets[i][0];
+    int c = col + offsets[i][1];
+    int fits = 1;
+
+    for (int j = 0; label[j] != '\0'; j++) {
+      int rr = r;
+      int cc = c + j;
+      if (!inBounds(rr, cc) || canvas[rr][cc] == '*') {
+        fits = 0;
+        break;
+      }
+    }
+
+    if (fits) {
+      for (int j = 0; label[j] != '\0'; j++) {
+        int rr = r;
+        int cc = c + j;
+        canvas[rr][cc] = label[j];
+      }
+      return 1;
+    }
+  }
+
+  return 0;
+}
+
+static void drawObjectIdLabel(const GraphicObject *o) {
+  if (o->id <= 0)
+    return;
+
+  char label[16];
+  snprintf(label, sizeof(label), "%d", o->id);
+  if (placeObjectLabel(o->p[0].row, o->p[0].col, label))
+    return;
+
+  int fallbackRow = o->p[0].row;
+  int fallbackCol = o->p[0].col;
+  if (fallbackCol + (int)strlen(label) >= COLS)
+    fallbackCol = COLS - (int)strlen(label) - 1;
+  if (fallbackCol < 0)
+    fallbackCol = 0;
+  if (fallbackRow < 0)
+    fallbackRow = 0;
+  for (int i = 0; label[i] != '\0'; i++) {
+    int rr = fallbackRow;
+    int cc = fallbackCol + i;
+    if (inBounds(rr, cc))
+      canvas[rr][cc] = label[i];
+  }
+}
+
 /* ================================================================== */
 /*  drawObject / redrawCanvas / addObject / deleteObject / listObjects  */
 /* ================================================================== */
@@ -270,14 +341,22 @@ void drawObject(const GraphicObject *o) {
 
 void redrawCanvas(void) {
   clearCanvas();
-  for (int i = 0; i < objectCount; i++)
+  for (int i = 0; i < objectCount; i++) {
     drawObject(&objects[i]);
+    drawObjectIdLabel(&objects[i]);
+  }
 }
 
 int addObject(GraphicObject o) {
   if (objectCount >= MAX_OBJECTS)
     return -1;
-  o.id = nextId++;
+
+  if (o.id <= 0 || isObjectIdUsed(o.id)) {
+    o.id = generateObjectId();
+  } else if (nextId <= o.id + 1) {
+    nextId = o.id + 1;
+  }
+
   objects[objectCount++] = o;
   redrawCanvas();
   return o.id;
@@ -300,26 +379,26 @@ void listObjects(void) {
     printf("  No objects on canvas.\n");
     return;
   }
-  printf("  %-4s  %-10s  Details\n", "ID", "Type");
+  printf("  %-4s  %-10s  Position        Parameters\n", "ID", "Type");
   printf("  -----------------------------------------------------------\n");
   for (int i = 0; i < objectCount; i++) {
     GraphicObject *o = &objects[i];
     switch (o->type) {
     case SHAPE_RECTANGLE:
-      printf("  %-4d  %-10s  P1=(%d,%d) P2=(%d,%d) P3=(%d,%d) P4=(%d,%d)\n",
-             o->id, "Rectangle", o->p[0].row, o->p[0].col, o->p[1].row,
-             o->p[1].col, o->p[2].row, o->p[2].col, o->p[3].row, o->p[3].col);
+      printf("  %-4d  %-10s  (%d,%d)          size=(%d,%d)\n", o->id, "Rectangle",
+             o->p[0].row, o->p[0].col, abs(o->p[2].row - o->p[0].row) + 1,
+             abs(o->p[2].col - o->p[0].col) + 1);
       break;
     case SHAPE_CIRCLE:
       printf("  %-4d  %-10s  centre=(%d,%d)  radius=%d\n", o->id, "Circle",
              o->p[0].row, o->p[0].col, o->p[1].row);
       break;
     case SHAPE_LINE:
-      printf("  %-4d  %-10s  start=(%d,%d)  end=(%d,%d)\n", o->id, "Line",
+      printf("  %-4d  %-10s  start=(%d,%d)   end=(%d,%d)\n", o->id, "Line",
              o->p[0].row, o->p[0].col, o->p[1].row, o->p[1].col);
       break;
     case SHAPE_TRIANGLE:
-      printf("  %-4d  %-10s  P1=(%d,%d) P2=(%d,%d) P3=(%d,%d)\n", o->id,
+      printf("  %-4d  %-10s  P1=(%d,%d)      P2=(%d,%d) P3=(%d,%d)\n", o->id,
              "Triangle", o->p[0].row, o->p[0].col, o->p[1].row, o->p[1].col,
              o->p[2].row, o->p[2].col);
       break;
@@ -1042,7 +1121,7 @@ int main(void) {
       disableRawMode();
       clrscr();
       if (id > 0)
-        printf("  Rectangle added (ID %d).\n", id);
+        printf("  Rectangle added successfully. ID = %d\n", id);
       else
         printf("  Cancelled.\n");
       printf("  Press Enter to continue...\n");
@@ -1057,7 +1136,7 @@ int main(void) {
       /* interactiveCircle already disables raw mode after centre pick */
       clrscr();
       if (id > 0)
-        printf("  Circle added (ID %d).\n", id);
+        printf("  Circle added successfully. ID = %d\n", id);
       else
         printf("  Cancelled.\n");
       printf("  Press Enter to continue...\n");
@@ -1072,7 +1151,7 @@ int main(void) {
       disableRawMode();
       clrscr();
       if (id > 0)
-        printf("  Line added (ID %d).\n", id);
+        printf("  Line added successfully. ID = %d\n", id);
       else
         printf("  Cancelled.\n");
       printf("  Press Enter to continue...\n");
@@ -1087,7 +1166,7 @@ int main(void) {
       disableRawMode();
       clrscr();
       if (id > 0)
-        printf("  Triangle added (ID %d).\n", id);
+        printf("  Triangle added successfully. ID = %d\n", id);
       else
         printf("  Cancelled.\n");
       printf("  Press Enter to continue...\n");
@@ -1097,20 +1176,29 @@ int main(void) {
 
     /* ---- Delete ---- */
     case 5: {
-      printf("  Enter object ID to delete: ");
-      fflush(stdout);
-      int id = 0;
-      if (scanf("%d", &id) == 1) {
-        int c;
-        while ((c = getchar()) != '\n' && c != EOF) {
-        }
-        if (deleteObject(id))
-          printf("  Deleted object %d.\n", id);
-        else
-          printf("  Object %d not found.\n", id);
+      if (objectCount == 0) {
+        printf("  No objects available to delete.\n");
       } else {
-        int c;
-        while ((c = getchar()) != '\n' && c != EOF) {
+        printf("  Existing object IDs:");
+        for (int i = 0; i < objectCount; i++)
+          printf(" %d", objects[i].id);
+        printf("\n");
+        printf("  Enter object ID to delete: ");
+        fflush(stdout);
+        int id = 0;
+        if (scanf("%d", &id) == 1) {
+          int c;
+          while ((c = getchar()) != '\n' && c != EOF) {
+          }
+          if (deleteObject(id))
+            printf("  Deleted object ID %d.\n", id);
+          else
+            printf("  No object found with ID %d.\n", id);
+        } else {
+          int c;
+          while ((c = getchar()) != '\n' && c != EOF) {
+          }
+          printf("  Invalid input.\n");
         }
       }
       printf("  Press Enter to continue...\n");
