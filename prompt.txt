@@ -1,0 +1,141 @@
+Prompt 1:
+How can I implement a 2D character array canvas in C for a simple graphics editor?
+
+Response Summary:
+The response recommended using a fixed-size two-dimensional array, initializing it with blank spaces, and rendering it through a loop for display. This guided the development of the base canvas structure.
+
+------------------------------------------------------------
+
+Prompt 2:
+How should I draw a rectangle on the canvas using character-based plotting in C?
+
+Response Summary:
+The suggested approach used boundary lines and corner coordinates to render a rectangle clearly on the canvas. This informed the rectangle drawing implementation.
+
+------------------------------------------------------------
+
+Prompt 3:
+How can I draw a circle using a raster-style algorithm in a terminal-based graphics program?
+
+Response Summary:
+The response recommended using a midpoint-style circle drawing method to plot points around a center and create a smooth circular outline. This supported the circle drawing feature.
+
+------------------------------------------------------------
+
+Prompt 4:
+How can I draw a straight line between two points on the canvas using C?
+
+Response Summary:
+The AI suggested using a line-drawing algorithm that plots intermediate points between the start and end coordinates. This helped implement the line shape feature.
+
+------------------------------------------------------------
+
+Prompt 5:
+How can I draw a triangle by connecting three selected points on the canvas?
+
+Response Summary:
+The response proposed drawing three connected line segments between the chosen vertex points. This formed the basis for triangle drawing.
+
+------------------------------------------------------------
+
+Prompt 6:
+How can I store multiple shapes in a C program so they can be managed as objects?
+
+Response Summary:
+The AI recommended organizing shapes into a structure array with fields for type, points, and metadata. This guided the object-based design used in the project.
+
+------------------------------------------------------------
+
+Prompt 7:
+How can I assign unique object IDs to shapes and prevent duplicate identifiers?
+
+Response Summary:
+The response suggested generating IDs automatically and checking for conflicts before adding a new object. This informed the implementation of object identification.
+
+------------------------------------------------------------
+
+Prompt 8:
+How can I delete a selected object from the canvas while preserving the remaining shapes?
+
+Response Summary:
+The AI recommended removing the object from the internal array and shifting the remaining objects to maintain order. This supported the delete object functionality.
+
+------------------------------------------------------------
+
+Prompt 9:
+How can I modify an existing object after it has been drawn on the canvas?
+
+Response Summary:
+The response proposed supporting edit operations through a dedicated modification workflow that updates the selected object’s points or properties. This informed the modify object feature.
+
+------------------------------------------------------------
+
+Prompt 10:
+How can I create a snapshot of the current canvas and save it to a text file?
+
+Response Summary:
+The AI advised capturing the canvas layout and object list into a text report for later reference. This led to the implementation of the canvas snapshot feature.
+
+------------------------------------------------------------
+
+Prompt 11:
+How can I make the graphics editor interactive using cursor movement in a terminal environment?
+
+Response Summary:
+The response recommended using raw input handling and live cursor positioning so users can select points and confirm actions interactively. This supported the cursor-based drawing interface.
+
+------------------------------------------------------------
+
+Prompt 12:
+How can I let the user choose the radius of a circle interactively while previewing the result?
+
+Response Summary:
+The AI suggested a two-step interaction: first choose the center, then adjust the radius with live preview until confirmed. This shaped the circle radius selection mechanism.
+
+------------------------------------------------------------
+
+Prompt 13:
+How can I collect triangle points interactively with a preview of the growing shape?
+
+Response Summary:
+The response recommended capturing three points step by step and displaying the partial triangle as the user selects each point. This informed the triangle point selection workflow.
+
+------------------------------------------------------------
+
+Prompt 14:
+How can I improve the object list display so it is clearer for the user?
+
+Response Summary:
+The AI suggested presenting the object list in a structured format with object ID, shape type, location, and details. This influenced the improved object list display.
+
+------------------------------------------------------------
+
+Prompt 15:
+How can I support a menu-driven interface for drawing, deleting, modifying, and saving objects?
+
+Response Summary:
+The response recommended introducing a clear command menu so the user can access all major editor functions from one place. This contributed to the overall application workflow.
+
+------------------------------------------------------------
+
+Prompt 16:
+How should I document the project so it is suitable for GitHub and academic submission?
+
+Response Summary:
+The AI recommended including a concise project overview, implemented features, usage details, and technology information in the documentation. This guided the project documentation and GitHub support approach.
+
+------------------------------------------------------------
+
+Prompt 17:
+How can I make the editing process more intuitive by showing the selected object during modification?
+
+Response Summary:
+The response recommended rendering the current object in a preview buffer while the user adjusts its points. This supported the modify object interaction experience.
+
+------------------------------------------------------------
+
+Prompt 18:
+How can I ensure the graphics editor handles multiple object types cleanly in one unified system?
+
+Response Summary:
+The AI suggested using a common object structure with a shape type field and shape-specific handling logic. This shaped the unified object management approach in the project.
