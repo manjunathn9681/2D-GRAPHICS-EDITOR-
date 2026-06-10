@@ -205,6 +205,15 @@ void drawRectangleCorners(Point tl, Point br) {
   }
 }
 
+static void plotCirclePoint(Point centre, int x, int y) {
+  /* Terminal cells are wider than they are tall, so use a small horizontal
+   * scale factor to make circles look visually rounder while keeping the
+   * border to a single character thickness. */
+  int row = centre.row + y / 2;
+  int col = centre.col + x / 2;
+  setPixel(row, col);
+}
+
 /*
  * drawCircleCP -- draws a circle at centre with given integer radius.
  * Radius is stored in p[1].row of the GraphicObject.
@@ -214,18 +223,18 @@ void drawCircleCP(Point centre, int radius) {
     return;
 
   int x = 0;
-  int y = radius;
-  int d = 1 - radius;
+  int y = radius * 2;
+  int d = 1 - (radius * 2);
 
   while (x <= y) {
-    setPixel(centre.row + y, centre.col + x);
-    setPixel(centre.row + x, centre.col + y);
-    setPixel(centre.row - x, centre.col + y);
-    setPixel(centre.row - y, centre.col + x);
-    setPixel(centre.row - y, centre.col - x);
-    setPixel(centre.row - x, centre.col - y);
-    setPixel(centre.row + x, centre.col - y);
-    setPixel(centre.row + y, centre.col - x);
+    plotCirclePoint(centre, x, y);
+    plotCirclePoint(centre, y, x);
+    plotCirclePoint(centre, -x, y);
+    plotCirclePoint(centre, -y, x);
+    plotCirclePoint(centre, -y, -x);
+    plotCirclePoint(centre, -x, -y);
+    plotCirclePoint(centre, x, -y);
+    plotCirclePoint(centre, y, -x);
 
     if (d < 0) {
       d += 2 * x + 3;
@@ -364,23 +373,29 @@ static void drawSegmentBuf(char buf[ROWS][COLS], int r1, int c1, int r2, int c2)
   }
 }
 
+static void plotCirclePointBuf(char buf[ROWS][COLS], Point centre, int x, int y) {
+  int row = centre.row + y / 2;
+  int col = centre.col + x / 2;
+  setPixelBuf(buf, row, col);
+}
+
 static void drawCircleCPBuf(char buf[ROWS][COLS], Point centre, int radius) {
   if (radius < 1)
     return;
 
   int x = 0;
-  int y = radius;
-  int d = 1 - radius;
+  int y = radius * 2;
+  int d = 1 - (radius * 2);
 
   while (x <= y) {
-    setPixelBuf(buf, centre.row + y, centre.col + x);
-    setPixelBuf(buf, centre.row + x, centre.col + y);
-    setPixelBuf(buf, centre.row - x, centre.col + y);
-    setPixelBuf(buf, centre.row - y, centre.col + x);
-    setPixelBuf(buf, centre.row - y, centre.col - x);
-    setPixelBuf(buf, centre.row - x, centre.col - y);
-    setPixelBuf(buf, centre.row + x, centre.col - y);
-    setPixelBuf(buf, centre.row + y, centre.col - x);
+    plotCirclePointBuf(buf, centre, x, y);
+    plotCirclePointBuf(buf, centre, y, x);
+    plotCirclePointBuf(buf, centre, -x, y);
+    plotCirclePointBuf(buf, centre, -y, x);
+    plotCirclePointBuf(buf, centre, -y, -x);
+    plotCirclePointBuf(buf, centre, -x, -y);
+    plotCirclePointBuf(buf, centre, x, -y);
+    plotCirclePointBuf(buf, centre, y, -x);
 
     if (d < 0) {
       d += 2 * x + 3;
@@ -418,24 +433,31 @@ static void drawSegmentBufChar(char buf[ROWS][COLS], int r1, int c1, int r2,
   }
 }
 
+static void plotCirclePointBufChar(char buf[ROWS][COLS], Point centre, int x,
+                                   int y, char ch) {
+  int row = centre.row + y / 2;
+  int col = centre.col + x / 2;
+  setPixelBufChar(buf, row, col, ch);
+}
+
 static void drawCircleCPBufChar(char buf[ROWS][COLS], Point centre, int radius,
                                 char ch) {
   if (radius < 1)
     return;
 
   int x = 0;
-  int y = radius;
-  int d = 1 - radius;
+  int y = radius * 2;
+  int d = 1 - (radius * 2);
 
   while (x <= y) {
-    setPixelBufChar(buf, centre.row + y, centre.col + x, ch);
-    setPixelBufChar(buf, centre.row + x, centre.col + y, ch);
-    setPixelBufChar(buf, centre.row - x, centre.col + y, ch);
-    setPixelBufChar(buf, centre.row - y, centre.col + x, ch);
-    setPixelBufChar(buf, centre.row - y, centre.col - x, ch);
-    setPixelBufChar(buf, centre.row - x, centre.col - y, ch);
-    setPixelBufChar(buf, centre.row + x, centre.col - y, ch);
-    setPixelBufChar(buf, centre.row + y, centre.col - x, ch);
+    plotCirclePointBufChar(buf, centre, x, y, ch);
+    plotCirclePointBufChar(buf, centre, y, x, ch);
+    plotCirclePointBufChar(buf, centre, -x, y, ch);
+    plotCirclePointBufChar(buf, centre, -y, x, ch);
+    plotCirclePointBufChar(buf, centre, -y, -x, ch);
+    plotCirclePointBufChar(buf, centre, -x, -y, ch);
+    plotCirclePointBufChar(buf, centre, x, -y, ch);
+    plotCirclePointBufChar(buf, centre, y, -x, ch);
 
     if (d < 0) {
       d += 2 * x + 3;
