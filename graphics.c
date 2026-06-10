@@ -1,21 +1,4 @@
-/*
- * graphics.c  --  2D Graphics Editor
- *
- * Flow: Show menu -> User picks option -> Interactive cursor drawing
- *
- * Shape rules:
- *   Rectangle : 3 cursor clicks + 1 auto corner
- *               P1 = free, P2 = same row as P1 (horizontal only),
- *               P3 = same col as P2 (vertical only), P4 = auto
- *   Circle    : cursor picks centre, then TYPE radius as a number
- *   Line      : 2 free cursor points
- *   Triangle  : 3 free cursor points
- *
- * Keys (raw mode):
- *   Arrow keys   -- move cursor one cell
- *   Space/Enter  -- confirm current position
- *   ESC          -- cancel, return to menu
- */
+
 
 #include <errno.h>
 #include <fcntl.h>
@@ -481,31 +464,57 @@ void listObjects(void) {
     printf("  No objects on canvas.\n");
     return;
   }
-  printf("  %-4s  %-10s  Position        Parameters\n", "ID", "Type");
-  printf("  -----------------------------------------------------------\n");
+
+  printf("  +------------------------------------------------------------+\n");
+  printf("  | %-2s | %-10s | %-15s | %-24s |\n", "ID", "Shape", "Position", "Details");
+  printf("  +------------------------------------------------------------+\n");
+
   for (int i = 0; i < objectCount; i++) {
     GraphicObject *o = &objects[i];
     switch (o->type) {
-    case SHAPE_RECTANGLE:
-      printf("  %-4d  %-10s  (%d,%d)          size=(%d,%d)\n", o->id, "Rectangle",
-             o->p[0].row, o->p[0].col, abs(o->p[2].row - o->p[0].row) + 1,
-             abs(o->p[2].col - o->p[0].col) + 1);
-      break;
-    case SHAPE_CIRCLE:
-      printf("  %-4d  %-10s  centre=(%d,%d)  radius=%d\n", o->id, "Circle",
-             o->p[0].row, o->p[0].col, o->p[1].row);
-      break;
-    case SHAPE_LINE:
-      printf("  %-4d  %-10s  start=(%d,%d)   end=(%d,%d)\n", o->id, "Line",
-             o->p[0].row, o->p[0].col, o->p[1].row, o->p[1].col);
-      break;
-    case SHAPE_TRIANGLE:
-      printf("  %-4d  %-10s  P1=(%d,%d)      P2=(%d,%d) P3=(%d,%d)\n", o->id,
-             "Triangle", o->p[0].row, o->p[0].col, o->p[1].row, o->p[1].col,
-             o->p[2].row, o->p[2].col);
+    case SHAPE_RECTANGLE: {
+      char position[32];
+      char details[48];
+      snprintf(position, sizeof(position), "Row=%d Col=%d", o->p[0].row, o->p[0].col);
+      snprintf(details, sizeof(details), "Width=%d Height=%d",
+               abs(o->p[2].row - o->p[0].row) + 1,
+               abs(o->p[2].col - o->p[0].col) + 1);
+      printf("  | %-2d | %-10s | %-15s | %-24s |\n", o->id, "Rectangle", position,
+             details);
       break;
     }
+    case SHAPE_CIRCLE: {
+      char position[32];
+      char details[48];
+      snprintf(position, sizeof(position), "Center=(%d,%d)", o->p[0].row, o->p[0].col);
+      snprintf(details, sizeof(details), "Radius=%d", o->p[1].row);
+      printf("  | %-2d | %-10s | %-15s | %-24s |\n", o->id, "Circle", position,
+             details);
+      break;
+    }
+    case SHAPE_LINE: {
+      char position[32];
+      char details[48];
+      snprintf(position, sizeof(position), "Start=(%d,%d)", o->p[0].row, o->p[0].col);
+      snprintf(details, sizeof(details), "End=(%d,%d)", o->p[1].row, o->p[1].col);
+      printf("  | %-2d | %-10s | %-15s | %-24s |\n", o->id, "Line", position,
+             details);
+      break;
+    }
+    case SHAPE_TRIANGLE: {
+      char position[32];
+      char details[48];
+      snprintf(position, sizeof(position), "P1=(%d,%d)", o->p[0].row, o->p[0].col);
+      snprintf(details, sizeof(details), "P2=(%d,%d) P3=(%d,%d)", o->p[1].row,
+               o->p[1].col, o->p[2].row, o->p[2].col);
+      printf("  | %-2d | %-10s | %-15s | %-24s |\n", o->id, "Triangle", position,
+             details);
+      break;
+    }
+    }
   }
+
+  printf("  +------------------------------------------------------------+\n");
 }
 
 /* ================================================================== */
@@ -1698,16 +1707,12 @@ int main(void) {
       printf("\n  Press Enter to continue...\n");
       getchar();
       break;
-
-    /* ---- Display canvas ---- */
     case 7:
       printf("\n");
       displayCanvas();
       printf("\n  Press Enter to continue...\n");
       getchar();
       break;
-
-    /* ---- Clear ---- */
     case 8:
       objectCount = 0;
       nextId = 1;
@@ -1722,7 +1727,6 @@ int main(void) {
       printf("  Goodbye!\n");
       return 0;
 
-    /* ---- Canvas Snapshot ---- */
     case 10:
       printf("\n");
       canvasSnapshot();
@@ -1730,7 +1734,6 @@ int main(void) {
       getchar();
       break;
 
-    /* ---- Modify ---- */
     case 11: {
       if (objectCount == 0) {
         printf("  No objects available to modify.\n");
