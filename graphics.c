@@ -1054,30 +1054,6 @@ int interactiveTriangle(void) {
   int curRow = ROWS / 2, curCol = COLS / 2;
   clrscr();
 
-  /* Helper: draw a line segment into buf */
-#define DRAW_SEG_BUF(BUF, r1, c1, r2, c2)                                      \
-  do {                                                                         \
-    int _dr = abs((r2) - (r1)), _dc = abs((c2) - (c1));                        \
-    int _sr = (r1) < (r2) ? 1 : -1, _sc = (c1) < (c2) ? 1 : -1;                \
-    int _err = (_dr > _dc ? _dr : -_dc) / 2, _e2;                              \
-    int _rr = (r1), _cc = (c1);                                                \
-    for (;;) {                                                                 \
-      if (inBounds(_rr, _cc))                                                  \
-        (BUF)[_rr][_cc] = '*';                                                 \
-      if (_rr == (r2) && _cc == (c2))                                          \
-        break;                                                                 \
-      _e2 = _err;                                                              \
-      if (_e2 > -_dr) {                                                        \
-        _err -= _dc;                                                           \
-        _rr += _sr;                                                            \
-      }                                                                        \
-      if (_e2 < _dc) {                                                         \
-        _err += _dr;                                                           \
-        _cc += _sc;                                                            \
-      }                                                                        \
-    }                                                                          \
-  } while (0)
-
   /* P1 */
   Point P1 = {0, 0};
   for (;;) {
@@ -1101,14 +1077,13 @@ int interactiveTriangle(void) {
     }
   }
 
-  /* P2 with live edge P1->cursor */
+  /* P2: show only the confirmed point and the live cursor */
   Point P2 = {0, 0};
   Point conf1[1];
   conf1[0] = P1;
   for (;;) {
     char buf[ROWS][COLS];
     memcpy(buf, canvas, sizeof(buf));
-    DRAW_SEG_BUF(buf, P1.row, P1.col, curRow, curCol);
     renderWithBuf(buf, conf1, 1, curRow, curCol,
                   "[Tri P2/3] Pick POINT 2  SPACE=confirm  ESC=cancel");
     int k = readKey();
@@ -1129,7 +1104,7 @@ int interactiveTriangle(void) {
     }
   }
 
-  /* P3 with live full triangle preview */
+  /* P3: show only the confirmed points and the live cursor */
   Point P3 = {0, 0};
   /* start cursor near midpoint offset */
   curRow = (P1.row + P2.row) / 2 + 4;
@@ -1143,9 +1118,6 @@ int interactiveTriangle(void) {
   for (;;) {
     char buf[ROWS][COLS];
     memcpy(buf, canvas, sizeof(buf));
-    DRAW_SEG_BUF(buf, P1.row, P1.col, P2.row, P2.col);
-    DRAW_SEG_BUF(buf, P2.row, P2.col, curRow, curCol);
-    DRAW_SEG_BUF(buf, curRow, curCol, P1.row, P1.col);
     renderWithBuf(buf, conf2, 2, curRow, curCol,
                   "[Tri P3/3] Pick APEX  SPACE=confirm  ESC=cancel");
     int k = readKey();
@@ -1165,8 +1137,6 @@ int interactiveTriangle(void) {
       break;
     }
   }
-
-#undef DRAW_SEG_BUF
 
   GraphicObject obj;
   memset(&obj, 0, sizeof(obj));
@@ -1467,7 +1437,6 @@ static int modifyTriangleObject(GraphicObject *obj) {
   for (;;) {
     char buf[ROWS][COLS];
     prepareModifyDisplayBuffer(buf, obj);
-    drawSegmentBuf(buf, P1.row, P1.col, curRow, curCol);
     renderWithBuf(buf, conf1, 1, curRow, curCol,
                   "[Tri P2/3] Pick POINT 2  SPACE=confirm  ESC=cancel");
     int k = readKey();
@@ -1500,9 +1469,6 @@ static int modifyTriangleObject(GraphicObject *obj) {
   for (;;) {
     char buf[ROWS][COLS];
     prepareModifyDisplayBuffer(buf, obj);
-    drawSegmentBuf(buf, P1.row, P1.col, P2.row, P2.col);
-    drawSegmentBuf(buf, P2.row, P2.col, curRow, curCol);
-    drawSegmentBuf(buf, curRow, curCol, P1.row, P1.col);
     renderWithBuf(buf, conf2, 2, curRow, curCol,
                   "[Tri P3/3] Pick APEX  SPACE=confirm  ESC=cancel");
     int k = readKey();
