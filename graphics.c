@@ -212,12 +212,29 @@ void drawRectangleCorners(Point tl, Point br) {
 void drawCircleCP(Point centre, int radius) {
   if (radius < 1)
     return;
-  for (int dr = -radius; dr <= radius; dr++)
-    for (int dc = -radius; dc <= radius; dc++) {
-      double d = sqrt((double)dr * dr + (double)dc * dc);
-      if (fabs(d - radius) <= 0.55)
-        setPixel(centre.row + dr, centre.col + dc);
+
+  int x = 0;
+  int y = radius;
+  int d = 1 - radius;
+
+  while (x <= y) {
+    setPixel(centre.row + y, centre.col + x);
+    setPixel(centre.row + x, centre.col + y);
+    setPixel(centre.row - x, centre.col + y);
+    setPixel(centre.row - y, centre.col + x);
+    setPixel(centre.row - y, centre.col - x);
+    setPixel(centre.row - x, centre.col - y);
+    setPixel(centre.row + x, centre.col - y);
+    setPixel(centre.row + y, centre.col - x);
+
+    if (d < 0) {
+      d += 2 * x + 3;
+    } else {
+      d += 2 * (x - y) + 5;
+      y--;
     }
+    x++;
+  }
 }
 
 void drawTrianglePts(Point p1, Point p2, Point p3) {
@@ -350,12 +367,29 @@ static void drawSegmentBuf(char buf[ROWS][COLS], int r1, int c1, int r2, int c2)
 static void drawCircleCPBuf(char buf[ROWS][COLS], Point centre, int radius) {
   if (radius < 1)
     return;
-  for (int dr = -radius; dr <= radius; dr++)
-    for (int dc = -radius; dc <= radius; dc++) {
-      double d = sqrt((double)dr * dr + (double)dc * dc);
-      if (fabs(d - radius) <= 0.55)
-        setPixelBuf(buf, centre.row + dr, centre.col + dc);
+
+  int x = 0;
+  int y = radius;
+  int d = 1 - radius;
+
+  while (x <= y) {
+    setPixelBuf(buf, centre.row + y, centre.col + x);
+    setPixelBuf(buf, centre.row + x, centre.col + y);
+    setPixelBuf(buf, centre.row - x, centre.col + y);
+    setPixelBuf(buf, centre.row - y, centre.col + x);
+    setPixelBuf(buf, centre.row - y, centre.col - x);
+    setPixelBuf(buf, centre.row - x, centre.col - y);
+    setPixelBuf(buf, centre.row + x, centre.col - y);
+    setPixelBuf(buf, centre.row + y, centre.col - x);
+
+    if (d < 0) {
+      d += 2 * x + 3;
+    } else {
+      d += 2 * (x - y) + 5;
+      y--;
     }
+    x++;
+  }
 }
 
 static void setPixelBufChar(char buf[ROWS][COLS], int r, int c, char ch) {
@@ -388,12 +422,29 @@ static void drawCircleCPBufChar(char buf[ROWS][COLS], Point centre, int radius,
                                 char ch) {
   if (radius < 1)
     return;
-  for (int dr = -radius; dr <= radius; dr++)
-    for (int dc = -radius; dc <= radius; dc++) {
-      double d = sqrt((double)dr * dr + (double)dc * dc);
-      if (fabs(d - radius) <= 0.55)
-        setPixelBufChar(buf, centre.row + dr, centre.col + dc, ch);
+
+  int x = 0;
+  int y = radius;
+  int d = 1 - radius;
+
+  while (x <= y) {
+    setPixelBufChar(buf, centre.row + y, centre.col + x, ch);
+    setPixelBufChar(buf, centre.row + x, centre.col + y, ch);
+    setPixelBufChar(buf, centre.row - x, centre.col + y, ch);
+    setPixelBufChar(buf, centre.row - y, centre.col + x, ch);
+    setPixelBufChar(buf, centre.row - y, centre.col - x, ch);
+    setPixelBufChar(buf, centre.row - x, centre.col - y, ch);
+    setPixelBufChar(buf, centre.row + x, centre.col - y, ch);
+    setPixelBufChar(buf, centre.row + y, centre.col - x, ch);
+
+    if (d < 0) {
+      d += 2 * x + 3;
+    } else {
+      d += 2 * (x - y) + 5;
+      y--;
     }
+    x++;
+  }
 }
 
 static void drawObjectBuf(char buf[ROWS][COLS], const GraphicObject *o, char ch) {
@@ -901,7 +952,7 @@ int interactiveRectangle(void) {
 }
 
 /* ================================================================== */
-/*  CIRCLE  (cursor -> centre, then TYPE radius)                        */
+/*  CIRCLE  (cursor -> centre, then interactive radius)                */
 /* ================================================================== */
 int interactiveCircle(void) {
   int curRow = ROWS / 2, curCol = COLS / 2;
@@ -913,8 +964,10 @@ int interactiveCircle(void) {
     render(NULL, 0, curRow, curCol,
            "[Circle] Pick CENTRE  SPACE=confirm  ESC=cancel");
     int k = readKey();
-    if (k == KEY_ESC)
+    if (k == KEY_ESC) {
+      disableRawMode();
       return -1;
+    }
     if (k == KEY_UP && curRow > 0)
       curRow--;
     if (k == KEY_DOWN && curRow < ROWS - 1)
@@ -930,25 +983,38 @@ int interactiveCircle(void) {
     }
   }
 
-  /* Phase 1: type the radius (back to cooked mode) */
-  disableRawMode();
-  clrscr();
-  printf("  Centre confirmed at row=%d, col=%d\n\n", centre.row, centre.col);
-  printf("  Enter radius (1 - %d): ", COLS / 3);
-  fflush(stdout);
+  /* Phase 1: adjust radius interactively with live preview */
+  int radius = 1;
+  Point confirmed[1];
+  confirmed[0] = centre;
+  for (;;) {
+    char buf[ROWS][COLS];
+    memcpy(buf, canvas, sizeof(buf));
+    drawCircleCPBuf(buf, centre, radius);
 
-  int radius = 0;
-  while (scanf("%d", &radius) != 1 || radius < 1) {
-    int ch;
-    while ((ch = getchar()) != '\n' && ch != EOF) {
+    char status[120];
+    snprintf(status, sizeof(status),
+             "[Circle] Radius=%d  LEFT/DOWN=decrease  RIGHT/UP=increase  SPACE=confirm  ESC=cancel",
+             radius);
+    renderWithBuf(buf, confirmed, 1, centre.row, centre.col, status);
+
+    int k = readKey();
+    if (k == KEY_ESC) {
+      disableRawMode();
+      return -1;
     }
-    printf("  Invalid. Enter radius (1 - %d): ", COLS / 3);
-    fflush(stdout);
-  }
-  int ch;
-  while ((ch = getchar()) != '\n' && ch != EOF) {
+    if (k == KEY_LEFT || k == KEY_DOWN) {
+      if (radius > 1)
+        radius--;
+    }
+    if (k == KEY_RIGHT || k == KEY_UP) {
+      radius++;
+    }
+    if (k == KEY_SPACE || k == KEY_ENTER)
+      break;
   }
 
+  disableRawMode();
   GraphicObject obj;
   memset(&obj, 0, sizeof(obj));
   obj.type = SHAPE_CIRCLE;
@@ -1593,7 +1659,6 @@ int main(void) {
     case 2: {
       enableRawMode();
       int id = interactiveCircle();
-      /* interactiveCircle already disables raw mode after centre pick */
       clrscr();
       if (id > 0)
         printf("  Circle added successfully. ID = %d\n", id);
