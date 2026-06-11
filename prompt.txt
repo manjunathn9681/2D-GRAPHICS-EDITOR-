@@ -139,3 +139,164 @@ How can I ensure the graphics editor handles multiple object types cleanly in on
 
 Response Summary:
 The AI suggested using a common object structure with a shape type field and shape-specific handling logic. This shaped the unified object management approach in the project.
+
+------------------------------------------------------------
+
+Prompt 19:
+How can I implement an interactive rectangle drawing workflow where the user picks three points and the fourth corner is automatically computed?
+
+Response Summary:
+The AI described a three-phase cursor interaction: Phase 0 picks the first free corner, Phase 1 locks the row and lets the user move left/right for the second corner, and Phase 2 locks the column and lets the user move up/down for the third corner. The fourth corner is then auto-computed as (P3.row, P1.col). A live preview buffer updates the canvas with the growing rectangle outline at every key press before the shape is confirmed.
+
+------------------------------------------------------------
+
+Prompt 20:
+How can I implement interactive circle drawing where the user first picks a centre and then adjusts the radius with live preview?
+
+Response Summary:
+The AI proposed a two-phase interaction: Phase 0 uses a free cursor to select the centre point, and Phase 1 increases or decreases an integer radius value using the arrow keys while drawing the circle into a preview buffer on every frame. The radius value and confirmation instructions are shown in a status line below the canvas. Pressing SPACE or ENTER finalises the circle.
+
+------------------------------------------------------------
+
+Prompt 21:
+How should the Bresenham line-drawing algorithm be integrated to draw a line between two user-selected cursor points with live preview?
+
+Response Summary:
+The AI explained that after the first point is confirmed, the algorithm should plot a live Bresenham line from the confirmed start point to the current cursor position in a preview buffer on every render frame. The second point is finalised when the user presses SPACE or ENTER, and the resulting line is committed to the canvas as a permanent object.
+
+------------------------------------------------------------
+
+Prompt 22:
+How can I implement interactive triangle drawing that collects three free cursor points and shows confirmed points during the selection process?
+
+Response Summary:
+The AI suggested collecting all three triangle vertices step by step. After confirming Point 1, it is shown as an 'O' marker while the cursor is moved to Point 2. After confirming Point 2, both confirmed points are shown while the cursor is positioned by default near the midpoint of the base to help the user place the apex naturally. Once all three points are confirmed, the three line segments forming the triangle are drawn.
+
+------------------------------------------------------------
+
+Prompt 23:
+How can I implement an auto-incrementing object ID system that avoids duplicate identifiers even after objects are deleted?
+
+Response Summary:
+The AI recommended maintaining a global nextId counter and a helper function that scans the active object array before assigning a new ID. The counter skips any ID that is already in use and always advances after issuing an ID, ensuring no two live objects share the same identifier even when objects are deleted and the slot is reused.
+
+------------------------------------------------------------
+
+Prompt 24:
+How should I implement deletion of a shape object from the array while keeping the remaining objects in order?
+
+Response Summary:
+The AI advised shifting all elements after the deleted index one position to the left, decrementing the object count, and then calling redrawCanvas to refresh the display. This keeps the object array compact and ordered while immediately reflecting the deletion on the canvas.
+
+------------------------------------------------------------
+
+Prompt 25:
+How can I allow the user to modify an existing shape using the same cursor-based interaction used during creation, while showing the old shape during editing?
+
+Response Summary:
+The AI recommended loading the existing object's coordinates as the starting cursor position, copying the current canvas state into a preview buffer, drawing the old shape outline in a distinguishing character ('O') so the user can see what is being replaced, and then running the same multi-phase cursor workflow used for creation. On confirmation the object's point data is updated in place and the canvas is redrawn.
+
+------------------------------------------------------------
+
+Prompt 26:
+How can I implement a canvas snapshot feature that saves the canvas grid and object list to a text file with a header and timestamp?
+
+Response Summary:
+The AI described writing a snapshot function that opens a file named snapshot.txt, renders a centred title and the current date/time as a header, prints a column ruler above the canvas grid with row numbers on the left, and then appends a structured object list showing each object's ID, type, and coordinate details. The same output is echoed to the terminal so the user sees it immediately without leaving the program.
+
+------------------------------------------------------------
+
+Prompt 27:
+How can I implement raw terminal input in C to handle arrow key sequences for cursor movement without requiring the user to press Enter?
+
+Response Summary:
+The AI explained setting the terminal to raw mode using tcsetattr with flags that disable canonical input, echo, and signal processing. Arrow keys arrive as a three-byte ESC sequence; the handler performs a non-blocking peek after receiving an ESC byte to distinguish a bare ESC key from an ANSI arrow sequence, then maps the sequence to named constants KEY_UP, KEY_DOWN, KEY_LEFT, and KEY_RIGHT for use in the interactive drawing loops.
+
+------------------------------------------------------------
+
+Prompt 28:
+How can I implement a two-point circle creation method where the user picks the centre and then moves the cursor to an edge point so that the radius is computed from the distance between the two points?
+
+Response Summary:
+The AI suggested using the Euclidean distance formula (hypot) between the confirmed centre and the current cursor position as the live radius. The circle is redrawn into a preview buffer on every frame using that computed radius, giving the user real-time visual feedback. When the user confirms the edge point, the integer-rounded distance is stored as the radius in the object descriptor.
+
+------------------------------------------------------------
+
+Prompt 29:
+How can I improve circle rendering in a terminal so that circles appear visually round rather than oval, given that terminal characters are taller than they are wide?
+
+Response Summary:
+The AI recommended applying a horizontal scale factor to compensate for the aspect ratio of terminal character cells. The plotCirclePoint function was updated to halve both the x and y offsets before applying them to the centre coordinates, which causes the circle algorithm to plot points over a wider area horizontally and produces a more visually circular shape in the terminal.
+
+------------------------------------------------------------
+
+Prompt 30:
+How can I improve triangle rendering so that all three sides are drawn accurately and closed correctly regardless of vertex order?
+
+Response Summary:
+The AI confirmed that drawing three Bresenham line segments, P1-to-P2, P2-to-P3, and P3-back-to-P1, reliably closes the triangle for any combination of vertex coordinates. The drawTrianglePts function directly calls drawSegment three times in this order, ensuring a fully closed triangular outline without special-casing the vertex ordering.
+
+------------------------------------------------------------
+
+Prompt 31:
+How can I improve the triangle apex point selection experience so that the cursor starts in a sensible position relative to the already-confirmed base points?
+
+Response Summary:
+The AI suggested initialising the cursor for the third point at the midpoint of P1 and P2 offset downward by a fixed number of rows. This positions the cursor near a geometrically natural apex location, reducing the distance the user must move the cursor and making the triangle easier to shape intuitively. A bounds check ensures the initial cursor row does not exceed the canvas height.
+
+------------------------------------------------------------
+
+Prompt 32:
+How can I display the list of objects on the canvas in a structured tabular format that shows each object's ID, shape type, position, and additional details?
+
+Response Summary:
+The AI recommended printing a bordered table with fixed-width columns for ID, shape name, primary position, and shape-specific details such as width and height for rectangles, radius for circles, start and end points for lines, and all three vertex coordinates for triangles. The listObjects function uses snprintf to format each field into fixed-width strings and printf to align them within pipe-delimited column borders.
+
+------------------------------------------------------------
+
+Prompt 33:
+How should I write a README.md for the 2D Graphics Editor project so that it is suitable for GitHub and clearly communicates the project's purpose and usage?
+
+Response Summary:
+The AI recommended structuring the README with sections for project overview, implemented features, technologies used, project file structure, build and run instructions, a sample workflow, core data structures, mini-project requirements checklist, future improvement ideas, and an author field. This format makes the repository immediately understandable to reviewers and satisfies typical academic submission documentation requirements.
+
+------------------------------------------------------------
+
+Prompt 34:
+How do I initialise a Git repository for this project, make an initial commit, create a remote repository on GitHub, and push the code?
+
+Response Summary:
+The AI outlined the standard workflow: initialise a local Git repository with git init, add a .gitignore to exclude compiled binaries, stage all source files with git add, make an initial commit, create a new repository on GitHub, link it as the remote origin, and push the main branch. This established the project version control foundation and made the code publicly accessible on GitHub.
+
+------------------------------------------------------------
+
+Prompt 35:
+How should I create and maintain a prompt.txt file to document all GenAI interactions used during the development of this project for academic submission?
+
+Response Summary:
+The AI recommended using a consistent numbered format where each entry contains the exact prompt text and a concise response summary, separated by a divider line. The file should be kept in the project root, committed to Git alongside the source code, and updated after every significant AI-assisted development session so that it provides a complete and honest record of GenAI contributions to the project.
+
+------------------------------------------------------------
+
+Prompt 36:
+How can I fix the bug where the menu displayed an invalid choice message for option 10 because the default case used the range 1-10 in its error text even after option 11 was added?
+
+Response Summary:
+The AI identified that the default case in the menu switch statement still printed the message "Invalid choice (1-10)" after option 11 (Modify object) was added to the menu. The fix was to update the error message to reflect the new valid range. This ensured the user-facing error text remained accurate after the menu was extended.
+
+------------------------------------------------------------
+
+Prompt 37:
+How can I implement a canvas clear feature that resets all object data and returns the object ID counter to 1?
+
+Response Summary:
+The AI recommended setting the objectCount variable to zero, resetting the nextId counter to 1, and calling clearCanvas to refill the character array with blank underscore characters. This fully resets the editor state so a fresh drawing session can begin without stale object data or ID gaps.
+
+------------------------------------------------------------
+
+Prompt 38:
+How can I implement a reusable preview-buffer rendering system so that interactive shape creation and modification share the same drawing infrastructure?
+
+Response Summary:
+The AI advised abstracting the per-shape drawing logic into buffer-based variants of every drawing primitive, such as drawSegmentBuf and drawCircleCPBuf, that write into a caller-supplied character array instead of the global canvas. A higher-level renderWithBuf function accepts this buffer along with the confirmed point list, cursor position, and status string, and renders the complete scene in a single pass. Both the creation and modification workflows populate the buffer before each call to renderWithBuf, keeping all interactive previewing code consistent and maintainable.
+
